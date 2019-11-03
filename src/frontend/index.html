@@ -4,12 +4,15 @@
 <title>Synplicity</title>
 <link rel="shortcut icon" type="image/x-icon" href="https://i.imgur.com/gUsZQQE.png"/>
   <script>
-	function onLoad(){
-    	console.log("Page created on May 5, 2019");
+  document.getElementById("camInput").addEventListener("change", compileCode);
+
+  function compileCode() {
+    alert("Done.");
   }
   </script>
 </head>
 
 <body style="background-color: black;" onload="onLoad()">
+  <input type="file" id="camInput" accept="image/*" capture>
 </body>
 </html>

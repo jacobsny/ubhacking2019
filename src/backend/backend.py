@@ -6,6 +6,7 @@ import io
 import sys
 import subprocess
 from ctypes import *
+import os
 
 
 types = ["auto", "double", "int", "struct", "break", "else", "long",
@@ -69,14 +70,15 @@ def processIMG(imgArr):
         textArr[i] = sorted(textArr[i], key=lambda x: min(x["boundingBox"], key=lambda vertex: vertex.x).x)
         if((textArr[i][0]["word"] in types)):
             textArr[i][0]["word"] += " "
-        elif(len(textArr[i]) >=1 and textArr[i][0]["word"] + textArr[i][1]["word"] == "#include"):
-            textArr[i][1]["word"] += " "
+        elif(len(textArr[i]) >=2):
+            if(textArr[i][0]["word"] + textArr[i][1]["word"] == "#include"):
+                textArr[i][1]["word"] += " "
     textArr = sorted(textArr, key=lambda x: min(x[0]["boundingBox"], key=lambda vertex: vertex.y).y)
     # array should be sorted in paragraph order
     textStr = "\n".join(["".join([wordStr["word"] for wordStr in arr]) for arr in textArr])
     if(textStr.count("{") > textStr.count("}")):
         textStr += "\n}"
-    print(textStr)
+    textStr = textStr.replace("="," = ")
     return textStr, verticesArr
                     
 
@@ -88,7 +90,10 @@ def processSyntax(flags, string, imgName, verticesArr):
     # new text data and flags overlayed on the img
     arr = string.split("\n")
     for flag in flags:
-        arr[flag["location"]-1] += ("// " + flag["description"])
+        index = flag["location"]-1
+        if(index >= len(arr)):
+            continue
+        arr[index] += ("// " + flag["description"])
     # byte array read to file
     # find predominent color in that polygon
     # fill the image with that predominent color
@@ -111,7 +116,7 @@ def processSyntax(flags, string, imgName, verticesArr):
     yheight = yrange / len(verticesArr)
     count = 1
     for string in arr:
-        image = cv2.putText(img=image,text=string,org=(origin[0],int(origin[1]+(yheight * count))),bottomLeftOrigin=False,fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=min(yscale,xscale)*.5,color=(0,0,0))
+        image = cv2.putText(img=image,text=string,org=(origin[0],int(origin[1]+(yheight * .35 * count))),bottomLeftOrigin=False,fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=min(yscale,xscale)*.2,color=(0,0,0))
         count += 1
     retval, buffer2 = cv2.imencode(".jpg",image)
     return base64.b64encode(buffer2)
@@ -128,7 +133,10 @@ def mainProcess(imgArr):
     with open(imgName, "wb") as image:
         image.write(base64.decodebytes(imgArr))
     string, verticesArr = processIMG(imgArr)
-    flags = check_syntax(string)
+    arr = string.split("\n")
+    print(string)
+    flags = list(filter(lambda x: x["location"]<=len(arr),check_syntax(string)))
+    flags = list(filter(lambda x: not(x["location"]==len(arr) and arr[len(arr)-1] == "}"),flags))
     if(len(flags) == 0):
         f = open('./foo.c', 'w')
         f.write(string)
@@ -139,19 +147,21 @@ def mainProcess(imgArr):
         #call C function to check connection
         libRun.connect() 
 
-        libRun.main()
+        print("C return: " + str(libRun.main()))
         
     newImage = processSyntax(flags,string,imgName, verticesArr)
     return newImage
 
 if __name__ == "__main__":
-    testImg = "/home/jacobsny/Downloads/20191103_042650.jpg"
-    with open(testImg, "rb") as imageFile:
-        imgCode:bytes = (imageFile.read())
-        b64Str = base64.b64encode(imgCode)
-        # print(imgCode)
-        img = mainProcess(b64Str)
-        filename = "./test.jpg"
-        with open(filename, 'wb') as f:
-            f.write(base64.b64decode(img))
+    testingDir = "./images"
+    for fname in os.listdir(testingDir):
+        with open(testingDir + "/" + fname, "rb") as imageFile:
+            imgCode:bytes = (imageFile.read())
+            b64Str = base64.b64encode(imgCode)
+            # print(imgCode)
+            img = mainProcess(b64Str)
+            filename = "./test_" + fname[:-4] +" .jpg"
+            with open(filename, 'wb') as f:
+                f.write(base64.b64decode(img))
+   
     
