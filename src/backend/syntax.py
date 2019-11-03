@@ -25,8 +25,9 @@ invalid_types = ["NULL", "bool"]
 
 def check_syntax(text):
     code = text.split('\n')
-    if '' in code:
-        code.remove('')
+    for line in code:
+        if '' == line:
+            code.remove('')
     check_libs(code)
     check_semicolon(code)
     check_matching_brace(code)
@@ -243,15 +244,9 @@ def is_function(word):
         return parts[0] not in keywords
 
 
-print(check_syntax("#include <smeg.h>\n"
-                   "#include<stdio.h>\n"
-                   "int example(){\n"
+print(check_syntax("#include <stdio.h>\n"
+                   "int main(){\n"
                    "printf(\"hello world\");\n"
-                   "char *x;\n"
-                   "long int varName = 5;\n"
-                   "for( int i = 0; i < count.length; i++ ){\n"
-                   "double count = sizeof(int);\n"
-                   "}\n"
                    "}"))
 
 
