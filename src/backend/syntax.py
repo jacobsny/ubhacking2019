@@ -124,6 +124,8 @@ def check_vars_declared(code):
     for line in code:
         line_number += 1
         words = line.split(' ')
+        if '' in words:
+            words.remove('')
         if is_declaration(line, line_number):
             i = 0
             while i < 4:
@@ -138,11 +140,12 @@ def check_vars_declared(code):
         elif is_assignment(line):
             if words[0] not in declared_variables:
                 errors.append({"location": line_number, "description": "\"" + words[0] + "\"" + " is not defined"})
+    print(declared_variables)
 
 
 def is_declaration(line, line_number):
     words = line.split(' ')
-    if words[0] not in first_type and words[0] not in second_type and words[0] != "":
+    if (words[0] not in first_type and words[0] not in second_type) or words[0] == '':
         return False
     i = 0
     while i < 4:
@@ -168,6 +171,8 @@ def is_declaration(line, line_number):
 
 def is_assignment(line):
     words = line.split(' ')
+    if '' in words:
+        words.remove('')
     if not len(words) >= 2:
         return False
     if words[1] not in operators:
@@ -178,9 +183,9 @@ def is_assignment(line):
 print(check_syntax("int example(){\n"
                    "printf(\"hello world\");\n"
                    "char *x;\n"
-                   "int varName = 5;\n"
+                   "long int varName = 5;\n"
                    "for( int i = 0; i < count.length; i++ ){\n"
-                   "int count = sizeof(int);\n"
+                   "double count = sizeof(int);\n"
                    "}\n"
                    "}"))
 
