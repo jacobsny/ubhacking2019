@@ -4,12 +4,20 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.media.Image;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.graphics.BitmapFactory;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.ByteBuffer;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -33,9 +41,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data){
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) throws Exception{
         super.onActivityResult(requestCode, resultCode, data);
         Bitmap bitmap = (Bitmap)data.getExtras().get("data");
-        imageView.setImageBitmap(bitmap);
+
+        Socket socket = new Socket("localhost", 13085);
+        OutputStream outputStream = socket.getOutputStream();
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG,100,byteArrayOutputStream);
+        //byteArrayOutputStream.write(bitmap, 0, bitmap.getByteCount()); //Load the image using BitmapFactory.decodeFile(file, options), passing inSampleSize as an option.
+
+        byte[] size = ByteBuffer.allocate(4).putInt(byteArrayOutputStream.size()).array();
+        outputStream.write(size);
+        outputStream.write(byteArrayOutputStream.toByteArray());
+        outputStream.flush();
+        socket.close();
+
+        //imageView.setImageBitmap(bitmap);
     }
 }
