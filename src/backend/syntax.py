@@ -24,6 +24,7 @@ invalid_types = ["NULL", "bool"]
 
 
 def check_syntax(text):
+    text.strip("\r\t\0")
     code = text.split('\n')
     for line in code:
         if '' == line:
