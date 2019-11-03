@@ -11,12 +11,22 @@ requires_paren = ["for", "sizeof", "if", "while"]
 first_type = ["signed", "unsigned", "short", "long"]
 second_type = ["char", "int", "float", "double"]
 
+lib_map = {"<stdio.h>": [["printf(", "puts(", "putchar("], []], "<stdbool.h>": [[], ["bool"]],
+            "<stdlib.h>": [["malloc(", "calloc(", "realloc(", "free("], []], "<string.h>":
+            [["memset("], ["NULL"]]}
+
 declared_variables = []
 errors = []
+usable_functions = []
+invalid_functions = ["malloc(", "calloc(", "realloc(", "free(", "printf(", "memset(", "puts(", "putchar("]
+invalid_types = ["NULL", "bool"]
 
 
 def check_syntax(text):
     code = text.split('\n')
+    if '' in code:
+        code.remove('')
+    check_libs(code)
     check_semicolon(code)
     check_matching_brace(code)
     check_matching_paren(code)
@@ -27,23 +37,41 @@ def check_syntax(text):
     return errors
 
 
+def check_libs(code):
+    for line in code:
+        words = line.split(' ')
+        if '#' not in words[0]:
+            break
+        if words[1] in lib_map:
+            if len(lib_map[words[1]][0]) > 0:
+                for elem in lib_map[words[1]][0]:
+                    invalid_functions.remove(elem)
+                    usable_functions.append(elem)
+            if len(lib_map[words[1]][1]) > 0:
+                for elem in lib_map[words[1]][1]:
+                    invalid_types.remove(elem)
+    print(invalid_functions)
+    print(usable_functions)
+    print(invalid_types)
+
+
 def check_semicolon(code):
     first = True
     line_number = 0
     for line in code:
         line_number += 1
-        if line != "":
-            if first and line[0] != "#":
+        if first:
+            if '#' not in line[line_number - 1]:
                 first = False
-            else:
-                contained = False
-                for word in requires_brace:
-                    if word in line:
-                        contained = True
-                        break
-                if len(line) > 0 and line[len(line) - 1] != ";" and line[0] != "{" and line[0] != "}" \
-                        and line[len(line) - 1] != '{' and line[len(line) - 1] != '}' and not contained:
-                    errors.append({"location": line_number, "description": "Missing semicolon"})
+        else:
+            contained = False
+            for word in requires_brace:
+                if word in line:
+                    contained = True
+                    break
+            if len(line) > 0 and line[len(line) - 1] != ";" and line[0] != "{" and line[0] != "}" \
+                    and line[len(line) - 1] != '{' and line[len(line) - 1] != '}' and not contained:
+                errors.append({"location": line_number, "description": "Missing semicolon"})
 
 
 def check_matching_brace(code):
@@ -103,10 +131,14 @@ def check_conditional_enclosed(code):
     line_number = 0
     for line in code:
         line_number += 1
-        for word in requires_paren:
-            if word in line and '(' not in line and ')' not in line:
-                errors.append({"location": line_number, "description": "Statements using \"" + word +
-                                                                       "\" must be enclosed by parenthesis"})
+        words = line.split(' ')
+        if '' in words:
+            words.remove('')
+        for word in words:
+            if word.rstrip('\r(') in requires_paren:
+                if word in line and '(' not in line and ')' not in line:
+                    errors.append({"location": line_number, "description": "Statements using \"" + word +
+                                                                           "\" must be enclosed by parenthesis"})
 
 
 def check_kw_case(code):
@@ -140,7 +172,6 @@ def check_vars_declared(code):
         elif is_assignment(line):
             if words[0] not in declared_variables:
                 errors.append({"location": line_number, "description": "\"" + words[0] + "\"" + " is not defined"})
-    print(declared_variables)
 
 
 def is_declaration(line, line_number):
@@ -180,7 +211,18 @@ def is_assignment(line):
     return True
 
 
-print(check_syntax("int example(){\n"
+def check_valid_function(code):
+    return 1
+
+
+def is_function(word):
+    return 1
+
+
+print(check_syntax("#include <stdlib.h>\n"
+                   "#include <string.h>\n"
+                   "int example(){\n"
+                   "platform\n"
                    "printf(\"hello world\");\n"
                    "char *x;\n"
                    "long int varName = 5;\n"
