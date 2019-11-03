@@ -8,12 +8,13 @@ operators = ["+", "-", "*", "/", "=", "==", "+=", "-=", "&&", "||", "<", ">", "<
 
 requires_brace = ["else", "switch", "for", "do", "if", "while"]
 requires_paren = ["for", "sizeof", "if", "while"]
+types = ["signed", "unsigned", "short", "long", "char", "int", "float", "double"]
 first_type = ["signed", "unsigned", "short", "long"]
 second_type = ["char", "int", "float", "double"]
 
 lib_map = {"<stdio.h>": [["printf(", "puts(", "putchar("], []], "<stdbool.h>": [[], ["bool"]],
-            "<stdlib.h>": [["malloc(", "calloc(", "realloc(", "free("], []], "<string.h>":
-            [["memset("], ["NULL"]]}
+           "<stdlib.h>": [["malloc(", "calloc(", "realloc(", "free("], []], "<string.h>":
+           [["memset("], ["NULL"]]}
 
 declared_variables = []
 errors = []
@@ -34,6 +35,7 @@ def check_syntax(text):
     check_conditional_enclosed(code)
     check_kw_case(code)
     check_vars_declared(code)
+    check_valid_function(code)
     return errors
 
 
@@ -50,9 +52,6 @@ def check_libs(code):
             if len(lib_map[words[1]][1]) > 0:
                 for elem in lib_map[words[1]][1]:
                     invalid_types.remove(elem)
-    print(invalid_functions)
-    print(usable_functions)
-    print(invalid_types)
 
 
 def check_semicolon(code):
@@ -212,24 +211,23 @@ def is_assignment(line):
 
 
 def check_valid_function(code):
-    return 1
+    line_number = 0
+    for line in code:
+        line_number += 1
+        words = line.split(' ')
+        for word in words:
+            if is_function(word):
+                if words[0] in types:
+                    usable_functions.append(word.split('(')[0] + '(')
+                elif word.split('(')[0] + '(' not in usable_functions:
+                    errors.append({"location": line_number, "description": "Function " + word.split('(')[0]
+                                                            + '()' + " was not declared prior to function call"})
 
 
 def is_function(word):
-    return 1
-
-
-print(check_syntax("#include <stdlib.h>\n"
-                   "#include <string.h>\n"
-                   "int example(){\n"
-                   "platform\n"
-                   "printf(\"hello world\");\n"
-                   "char *x;\n"
-                   "long int varName = 5;\n"
-                   "for( int i = 0; i < count.length; i++ ){\n"
-                   "double count = sizeof(int);\n"
-                   "}\n"
-                   "}"))
+    if '(' in word:
+        parts = word.split('(')
+        return parts[0] not in keywords
 
 
 #NOTES: a loop such as "for int i = 0; i < sizeof(int); i++ " would not thow an error, as the line contains "()" from sizeof().
