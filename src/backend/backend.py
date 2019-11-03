@@ -5,6 +5,9 @@ import base64
 import io
 import sys
 import subprocess
+from ctypes import *
+
+
 types = ["auto", "double", "int", "struct", "break", "else", "long",
             "switch", "case", "enum", "register", "typedef", "const",
             "extern", "return", "union", "char", "float", "short", "unsigned",
@@ -66,6 +69,8 @@ def processIMG(imgArr):
         textArr[i] = sorted(textArr[i], key=lambda x: min(x["boundingBox"], key=lambda vertex: vertex.x).x)
         if((textArr[i][0]["word"] in types)):
             textArr[i][0]["word"] += " "
+        elif(len(textArr[i]) >=1 and textArr[i][0]["word"] + textArr[i][1]["word"] == "#include"):
+            textArr[i][1]["word"] += " "
     textArr = sorted(textArr, key=lambda x: min(x[0]["boundingBox"], key=lambda vertex: vertex.y).y)
     # array should be sorted in paragraph order
     textStr = "\n".join(["".join([wordStr["word"] for wordStr in arr]) for arr in textArr])
@@ -101,7 +106,6 @@ def processSyntax(flags, string, imgName, verticesArr):
     textSize = cv2.getTextSize(maxStr,cv2.FONT_HERSHEY_SIMPLEX,1,1)
     yscale = yrange / len(verticesArr) / textSize[0][1]
     xscale = xrange / textSize[0][0]
-    print(xscale,yscale)
     newStr = "\n".join(arr)
     origin = [min(verticesArr,key=lambda x: x[0])[0],min(verticesArr,key=lambda x: x[1])[1]]
     yheight = yrange / len(verticesArr)
@@ -129,10 +133,16 @@ def mainProcess(imgArr):
         f = open('./foo.c', 'w')
         f.write(string)
         f.close()
-        subprocess.call(["gcc", "./foo.c", "-Wall", "-std=c99", '-Werror', '-Ofast', '-D_DEFAULT_SOURCE'])
-    else:
-        newImage = processSyntax(flags,string,imgName, verticesArr)
-        return newImage
+        subprocess.call(["gcc", "-shared", "-o", "librun.so", "-fPIC", "foo.c"])
+        libRun = CDLL("./librun.so")
+ 
+        #call C function to check connection
+        libRun.connect() 
+
+        libRun.main()
+        
+    newImage = processSyntax(flags,string,imgName, verticesArr)
+    return newImage
 
 if __name__ == "__main__":
     testImg = "/home/jacobsny/Downloads/20191103_042650.jpg"
