@@ -82,7 +82,7 @@ def check_semicolon(code):
                 if word in line:
                     contained = True
                     break
-            if len(line) > 0 and line[len(line) - 1] != ";" and line[0] != "{" and line[0] != "}" \
+            if len(line) > 0 and line[len(line) - 1] != ";" and line.strip('\r\t\0') != "{" and line.strip('\r\t\0') != "}" \
                     and line[len(line) - 1] != '{' and line[len(line) - 1] != '}' and not contained:
                 errors.append({"location": line_number, "description": "Missing semicolon"})
 
@@ -247,7 +247,7 @@ def is_function(word):
 print(check_syntax("#include <stdio.h>\n"
                    "int main(){\n"
                    "printf(\"hello world\");\n"
-                   "}"))
+                   "\t\0}\0\0"))
 
 
 #NOTES: a loop such as "for int i = 0; i < sizeof(int); i++ " would not thow an error, as the line contains "()" from sizeof().
