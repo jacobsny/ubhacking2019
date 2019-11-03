@@ -44,6 +44,9 @@ def check_syntax(text):
 def check_libs(code):
     for line in code:
         words = line.split(' ')
+        for word in words:
+            if '' == word:
+                words.remove('')
         if '#' not in words[0]:
             break
         if len(words) == 1:
@@ -146,8 +149,9 @@ def check_conditional_enclosed(code):
     for line in code:
         line_number += 1
         words = line.split(' ')
-        if '' in words:
-            words.remove('')
+        for word in words:
+            if '' == word:
+                words.remove('')
         for word in words:
             if word.rstrip('\r(') in requires_paren:
                 if word in line and '(' not in line and ')' not in line:
@@ -161,6 +165,9 @@ def check_kw_case(code):
         line_number += 1
         words = line.split(' ')
         for word in words:
+            if '' == word:
+                words.remove('')
+        for word in words:
             if word.lower() in keywords and word != word.lower():
                 errors.append({"location": line_number, "description": "Keywords must be completely lowercase"})
 
@@ -170,8 +177,9 @@ def check_vars_declared(code):
     for line in code:
         line_number += 1
         words = line.split(' ')
-        if '' in words:
-            words.remove('')
+        for word in words:
+            if '' == word:
+                words.remove('')
         if is_declaration(line, line_number):
             i = 0
             while i < 4:
@@ -190,6 +198,9 @@ def check_vars_declared(code):
 
 def is_declaration(line, line_number):
     words = line.split(' ')
+    for word in words:
+        if '' == word:
+            words.remove('')
     if (words[0] not in first_type and words[0] not in second_type) or words[0] == '':
         return False
     i = 0
@@ -216,8 +227,9 @@ def is_declaration(line, line_number):
 
 def is_assignment(line):
     words = line.split(' ')
-    if '' in words:
-        words.remove('')
+    for word in words:
+        if '' == word:
+            words.remove('')
     if not len(words) >= 2:
         return False
     if words[1] not in operators:
@@ -230,6 +242,9 @@ def check_valid_function(code):
     for line in code:
         line_number += 1
         words = line.split(' ')
+        for word in words:
+            if '' == word:
+                words.remove('')
         for word in words:
             if is_function(word):
                 if words[0] in types:
