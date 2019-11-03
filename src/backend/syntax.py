@@ -44,14 +44,27 @@ def check_libs(code):
         words = line.split(' ')
         if '#' not in words[0]:
             break
-        if words[1] in lib_map:
-            if len(lib_map[words[1]][0]) > 0:
-                for elem in lib_map[words[1]][0]:
-                    invalid_functions.remove(elem)
-                    usable_functions.append(elem)
-            if len(lib_map[words[1]][1]) > 0:
-                for elem in lib_map[words[1]][1]:
-                    invalid_types.remove(elem)
+        if len(words) == 1:
+            key = line.split('#include')
+            if key[1] in lib_map:
+                if len(lib_map[key[1]][0]) > 0:
+                    for elem in lib_map[key[1]][0]:
+                        if elem in invalid_functions:
+                            invalid_functions.remove(elem)
+                        usable_functions.append(elem)
+                if len(lib_map[key[1]][1]) > 0:
+                    for elem in lib_map[key[1]][1]:
+                        invalid_types.remove(elem)
+        if len(words) == 2:
+            if words[1] in lib_map:
+                if len(lib_map[words[1]][0]) > 0:
+                    for elem in lib_map[words[1]][0]:
+                        if elem in invalid_functions:
+                            invalid_functions.remove(elem)
+                        usable_functions.append(elem)
+                if len(lib_map[words[1]][1]) > 0:
+                    for elem in lib_map[words[1]][1]:
+                        invalid_types.remove(elem)
 
 
 def check_semicolon(code):
@@ -228,6 +241,18 @@ def is_function(word):
     if '(' in word:
         parts = word.split('(')
         return parts[0] not in keywords
+
+
+print(check_syntax("#include <smeg.h>\n"
+                   "#include<stdio.h>\n"
+                   "int example(){\n"
+                   "printf(\"hello world\");\n"
+                   "char *x;\n"
+                   "long int varName = 5;\n"
+                   "for( int i = 0; i < count.length; i++ ){\n"
+                   "double count = sizeof(int);\n"
+                   "}\n"
+                   "}"))
 
 
 #NOTES: a loop such as "for int i = 0; i < sizeof(int); i++ " would not thow an error, as the line contains "()" from sizeof().
