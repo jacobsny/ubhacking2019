@@ -3,7 +3,13 @@ from syntax import check_syntax
 import numpy as np
 import base64
 import io
-
+import sys
+import subprocess
+types = ["auto", "double", "int", "struct", "break", "else", "long",
+            "switch", "case", "enum", "register", "typedef", "const",
+            "extern", "return", "union", "char", "float", "short", "unsigned",
+            "continue", "for", "signed", "volatile", "default", "goto",
+            "sizeof", "void", "do", "if", "static", "while"]
                         
 def processIMG(imgArr):
     # this function takes a PIL Image
@@ -58,14 +64,18 @@ def processIMG(imgArr):
     # array will be formated so it is a 2d array of lines and inside each line are the words in the line
     for i in range(len(textArr)):
         textArr[i] = sorted(textArr[i], key=lambda x: min(x["boundingBox"], key=lambda vertex: vertex.x).x)
+        if((textArr[i][0]["word"] in types)):
+            textArr[i][0]["word"] += " "
     textArr = sorted(textArr, key=lambda x: min(x[0]["boundingBox"], key=lambda vertex: vertex.y).y)
     # array should be sorted in paragraph order
-    textStr = "\n".join([" ".join([wordStr["word"] for wordStr in arr]) for arr in textArr])
+    textStr = "\n".join(["".join([wordStr["word"] for wordStr in arr]) for arr in textArr])
+    if(textStr.count("{") > textStr.count("}")):
+        textStr += "\n}"
     print(textStr)
     return textStr, verticesArr
                     
 
-def processSyntax(flags, string, img, verticesArr):
+def processSyntax(flags, string, imgName, verticesArr):
     # this function takes the formatted string from processIMG
     # each flag {"location": line#, "description": "string of what's wrong"}
     # it takes the flags where there are syntax errors
@@ -80,10 +90,10 @@ def processSyntax(flags, string, img, verticesArr):
     # choose contrasting color to predominent color
     # put text in the center of that box left oriented
     # anything post // will be Red
-    nparr = np.fromstring(base64.b64decode(img), np.float32)
+    # nparr = np.frombuffer(base64.b64decode(img))
     yrange = max(verticesArr, key=lambda x: x[1])[1] - min(verticesArr, key=lambda x: x[1])[1]
     xrange = max(verticesArr, key=lambda x: x[0])[0] - min(verticesArr, key=lambda x: x[0])[0]
-    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    image = cv2.imread(imgName)
     pts = np.array(verticesArr,np.int32)
     pts = pts.reshape((-1,1,2))
     cv2.fillPoly(image,[pts],(255,255,255))
@@ -97,7 +107,7 @@ def processSyntax(flags, string, img, verticesArr):
     yheight = yrange / len(verticesArr)
     count = 1
     for string in arr:
-        image = cv2.putText(img=image,text=string,org=(origin[0],int(origin[1]+(yheight * count))),bottomLeftOrigin=False,fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=min(yscale,xscale)*1.25,color=(0,0,0))
+        image = cv2.putText(img=image,text=string,org=(origin[0],int(origin[1]+(yheight * count))),bottomLeftOrigin=False,fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=min(yscale,xscale)*.5,color=(0,0,0))
         count += 1
     retval, buffer2 = cv2.imencode(".jpg",image)
     return base64.b64encode(buffer2)
@@ -110,13 +120,22 @@ def mainProcess(imgArr):
     # half the returned data will go to John T
     # PIL img, text string, flags, and verticesArr will be passed to processSyntax
     # returned img will be sent to server
+    imgName = "save.jpg"
+    with open(imgName, "wb") as image:
+        image.write(base64.decodebytes(imgArr))
     string, verticesArr = processIMG(imgArr)
     flags = check_syntax(string)
-    newImage = processSyntax(flags,string,imgArr, verticesArr)
-    return newImage
+    if(len(flags) == 0):
+        f = open('./foo.c', 'w')
+        f.write(string)
+        f.close()
+        subprocess.call(["gcc", "./foo.c", "-Wall", "-std=c99", '-Werror', '-Ofast', '-D_DEFAULT_SOURCE'])
+    else:
+        newImage = processSyntax(flags,string,imgName, verticesArr)
+        return newImage
 
 if __name__ == "__main__":
-    testImg = "/home/jacobsny/Downloads/OCR-detect-handwriting.png"
+    testImg = "/home/jacobsny/Downloads/20191103_042650.jpg"
     with open(testImg, "rb") as imageFile:
         imgCode:bytes = (imageFile.read())
         b64Str = base64.b64encode(imgCode)
