@@ -24,9 +24,11 @@ invalid_types = ["NULL", "bool"]
 
 
 def check_syntax(text):
+    text.strip("\r\t\0")
     code = text.split('\n')
-    if '' in code:
-        code.remove('')
+    for line in code:
+        if '' == line:
+            code.remove('')
     check_libs(code)
     check_semicolon(code)
     check_matching_brace(code)
@@ -44,14 +46,27 @@ def check_libs(code):
         words = line.split(' ')
         if '#' not in words[0]:
             break
-        if words[1] in lib_map:
-            if len(lib_map[words[1]][0]) > 0:
-                for elem in lib_map[words[1]][0]:
-                    invalid_functions.remove(elem)
-                    usable_functions.append(elem)
-            if len(lib_map[words[1]][1]) > 0:
-                for elem in lib_map[words[1]][1]:
-                    invalid_types.remove(elem)
+        if len(words) == 1:
+            key = line.split('#include')
+            if key[1] in lib_map:
+                if len(lib_map[key[1]][0]) > 0:
+                    for elem in lib_map[key[1]][0]:
+                        if elem in invalid_functions:
+                            invalid_functions.remove(elem)
+                        usable_functions.append(elem)
+                if len(lib_map[key[1]][1]) > 0:
+                    for elem in lib_map[key[1]][1]:
+                        invalid_types.remove(elem)
+        if len(words) == 2:
+            if words[1] in lib_map:
+                if len(lib_map[words[1]][0]) > 0:
+                    for elem in lib_map[words[1]][0]:
+                        if elem in invalid_functions:
+                            invalid_functions.remove(elem)
+                        usable_functions.append(elem)
+                if len(lib_map[words[1]][1]) > 0:
+                    for elem in lib_map[words[1]][1]:
+                        invalid_types.remove(elem)
 
 
 def check_semicolon(code):
@@ -68,7 +83,7 @@ def check_semicolon(code):
                 if word in line:
                     contained = True
                     break
-            if len(line) > 0 and line[len(line) - 1] != ";" and line[0] != "{" and line[0] != "}" \
+            if len(line) > 0 and line[len(line) - 1] != ";" and line.strip('\r\t\0') != "{" and line.strip('\r\t\0') != "}" \
                     and line[len(line) - 1] != '{' and line[len(line) - 1] != '}' and not contained:
                 errors.append({"location": line_number, "description": "Missing semicolon"})
 
@@ -228,6 +243,12 @@ def is_function(word):
     if '(' in word:
         parts = word.split('(')
         return parts[0] not in keywords
+
+
+print(check_syntax("#include <stdio.h>\n"
+                   "int main(){\n"
+                   "printf(\"hello world\");\n"
+                   "\t\0}\0\0"))
 
 
 #NOTES: a loop such as "for int i = 0; i < sizeof(int); i++ " would not thow an error, as the line contains "()" from sizeof().
