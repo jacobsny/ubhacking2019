@@ -4,8 +4,12 @@ keywords = ["auto", "double", "int", "struct", "break", "else", "long",
             "continue", "for", "signed", "volatile", "default", "goto",
             "sizeof", "void", "do", "if", "static", "while"]
 
+operators = ["+", "-", "*", "/", "=", "==", "+=", "-=", "&&", "||", "<", ">", "<=", ">="]
+
 requires_brace = ["else", "switch", "for", "do", "if", "while"]
 requires_paren = ["for", "sizeof", "if", "while"]
+first_type = ["signed", "unsigned", "short", "long"]
+second_type = ["char", "int", "float", "double"]
 
 declared_variables = []
 errors = []
@@ -28,17 +32,18 @@ def check_semicolon(code):
     line_number = 0
     for line in code:
         line_number += 1
-        if first:
-            first = False
-        else:
-            contained = False
-            for word in requires_brace:
-                if word in line:
-                    contained = True
-                    break
-            if len(line) > 0 and line[len(line) - 1] != ";" and line[0] != "{" and line[0] != "}" \
-                    and line[len(line) - 1] != '{' and line[len(line) - 1] != '}' and not contained:
-                errors.append({"location": line_number, "description": "Missing semicolon"})
+        if line != "":
+            if first and line[0] != "#":
+                first = False
+            else:
+                contained = False
+                for word in requires_brace:
+                    if word in line:
+                        contained = True
+                        break
+                if len(line) > 0 and line[len(line) - 1] != ";" and line[0] != "{" and line[0] != "}" \
+                        and line[len(line) - 1] != '{' and line[len(line) - 1] != '}' and not contained:
+                    errors.append({"location": line_number, "description": "Missing semicolon"})
 
 
 def check_matching_brace(code):
@@ -115,14 +120,67 @@ def check_kw_case(code):
 
 
 def check_vars_declared(code):
-    return 1
+    line_number = 0
+    for line in code:
+        line_number += 1
+        words = line.split(' ')
+        if is_declaration(line, line_number):
+            i = 0
+            while i < 4:
+                if words[i] in first_type:
+                    i += 1
+                elif words[i] in second_type:
+                    i += 1
+                    break
+                else:
+                    break
+            declared_variables.append(words[i].strip('\r*;'))
+        elif is_assignment(line):
+            if words[0] not in declared_variables:
+                errors.append({"location": line_number, "description": "\"" + words[0] + "\"" + " is not defined"})
+
+
+def is_declaration(line, line_number):
+    words = line.split(' ')
+    if words[0] not in first_type and words[0] not in second_type and words[0] != "":
+        return False
+    i = 0
+    while i < 4:
+        if words[i] in first_type:
+            i += 1
+        elif words[i] in second_type:
+            i += 1
+            break
+        else:
+            if i > 0:
+                if words[i - 1] == "signed" or words[i - 1] == "unsigned":
+                    errors.append({"location": line_number, "description": "\""
+                                   + words[i - 1] + "\"" + " is not a declarable type"})
+            break
+    if ';' in words[i]:
+        return True
+    if '(' and ')' in words[i]:
+        return False
+    if words[i+1] != '=':
+        return False
+    return True
+
+
+def is_assignment(line):
+    words = line.split(' ')
+    if not len(words) >= 2:
+        return False
+    if words[1] not in operators:
+        return False
+    return True
 
 
 print(check_syntax("int example(){\n"
                    "printf(\"hello world\");\n"
-                   "int count[5] = [];\n"
+                   "char *x;\n"
+                   "int varName = 5;\n"
                    "for( int i = 0; i < count.length; i++ ){\n"
-                   "count[i] = sizeof(int);\n"
+                   "int count = sizeof(int);\n"
                    "}\n"
                    "}"))
 
