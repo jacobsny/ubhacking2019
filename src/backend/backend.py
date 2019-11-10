@@ -29,8 +29,6 @@ def processIMG(imgArr):
     
     annotation = client.document_text_detection(image=image)
 
-    # print(annotation)
-
     vertices = annotation.text_annotations[0].bounding_poly.vertices
 
     verticesArr = [[loc.x,loc.y] for loc in vertices]
@@ -38,6 +36,7 @@ def processIMG(imgArr):
     response = annotation.full_text_annotation.pages
 
     textArr = []
+    charSizeArr = []
     def insertArr(word_dictionary):
         ylow = min(word_dictionary["boundingBox"],key=lambda vertex: vertex.y).y
         yup = max(word_dictionary["boundingBox"],key=lambda vertex: vertex.y).y
@@ -64,22 +63,43 @@ def processIMG(imgArr):
                 for word in paragraph.words:
                     word_text = ''.join([symbol.text for symbol in word.symbols])
                     word_dict = {"word": word_text, "boundingBox": word.bounding_box.vertices}
+                    xlow = min(word.bounding_box.vertices, key=lambda vertex: vertex.x).x
+                    xup = max(word.bounding_box.vertices, key=lambda vertex: vertex.x).x
+                    charSizeArr.append((xup - xlow)/len(word_text))
                     insertArr(word_dict)
     # array will be formated so it is a 2d array of lines and inside each line are the words in the line
     for i in range(len(textArr)):
         textArr[i] = sorted(textArr[i], key=lambda x: min(x["boundingBox"], key=lambda vertex: vertex.x).x)
-        if((textArr[i][0]["word"] in types)):
-            textArr[i][0]["word"] += " "
-        elif(len(textArr[i]) >=2):
-            if(textArr[i][0]["word"] + textArr[i][1]["word"] == "#include"):
-                textArr[i][1]["word"] += " "
     textArr = sorted(textArr, key=lambda x: min(x[0]["boundingBox"], key=lambda vertex: vertex.y).y)
+    """
     # array should be sorted in paragraph order
     textStr = "\n".join(["".join([wordStr["word"] for wordStr in arr]) for arr in textArr])
+    for type in types:
+        textStr = textStr.replace("\n" + type,"\n" + type + " ")
+    # textStr = textStr.replace(" \n", "\n")
+    
     if(textStr.count("{") > textStr.count("}")):
         textStr += "\n}"
-    textStr = textStr.replace("="," = ")
+    textStr = textStr.replace("\t","")
+    textStr = textStr.replace("\0","")
+    textStr = textStr.replace("i\n",";\n")
+    print(textStr)
     return textStr, verticesArr
+    """
+    textDict = {}
+    for rowIndex in range(len(textArr)):
+        if rowIndex > 0:
+            # look at previous line and see if there's an offset
+            prevRow = textArr[rowIndex - 1]
+            row = textArr[rowIndex]
+            prevRowX = min(prevRow[0]["boundingBox"],key=lambda vertex: vertex.x).x
+            rowX = min(row[0]["boundingBox"],key=lambda vertex: vertex.x).x
+            dif = rowX - prevRowX
+            # tolerance for an increase or decrease in tab
+            
+        else:
+            textStr[rowIndex] =  " ".join([wordStr["word"] for wordStr in textArr[rowIndex]]) + "\n"
+    
                     
 
 def processSyntax(flags, string, imgName, verticesArr):
@@ -134,21 +154,21 @@ def mainProcess(imgArr):
         image.write(base64.decodebytes(imgArr))
     string, verticesArr = processIMG(imgArr)
     arr = string.split("\n")
-    print(string)
-    flags = list(filter(lambda x: x["location"]<=len(arr),check_syntax(string)))
-    flags = list(filter(lambda x: not(x["location"]==len(arr) and arr[len(arr)-1] == "}"),flags))
+    flags =check_syntax(string)
     if(len(flags) == 0):
         f = open('./foo.c', 'w')
         f.write(string)
         f.close()
         subprocess.call(["gcc", "-shared", "-o", "librun.so", "-fPIC", "foo.c"])
         libRun = CDLL("./librun.so")
- 
-        #call C function to check connection
-        libRun.connect() 
-
         print("C return: " + str(libRun.main()))
-        
+    else:
+        newFlags = []
+        for flag in flags:
+            if not flag in newFlags:
+                newFlags.append(flag)
+                    
+        print(newFlags)
     newImage = processSyntax(flags,string,imgName, verticesArr)
     return newImage
 
@@ -156,7 +176,7 @@ if __name__ == "__main__":
     testingDir = "./images"
     for fname in os.listdir(testingDir):
         with open(testingDir + "/" + fname, "rb") as imageFile:
-            imgCode:bytes = (imageFile.read())
+            imgCode  = (imageFile.read())
             b64Str = base64.b64encode(imgCode)
             # print(imgCode)
             img = mainProcess(b64Str)
